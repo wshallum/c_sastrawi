@@ -22,9 +22,9 @@ struct re_cache {
   UT_hash_handle hh;
 };
 
-struct re_cache *active_re_cache;
+static struct re_cache *active_re_cache;
 
-pcre2_code *compile(char *pattern) {
+static pcre2_code *compile(char *pattern) {
 
   PCRE2_SPTR pcre2_pattern = (PCRE2_SPTR)pattern;
 
@@ -53,7 +53,7 @@ pcre2_code *compile(char *pattern) {
   return re;
 }
 
-pcre2_code *get_compiled_re(char *re)
+static pcre2_code *get_compiled_re(char *re)
 {
   struct re_cache *re_cache_item = NULL;
   HASH_FIND_STR(active_re_cache, re, re_cache_item);
