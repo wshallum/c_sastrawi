@@ -1,0 +1,28 @@
+TODO for restructuring:
+
+- No more globals, everything in struct sastrawi_stemmer
+
+- No more strndup where it is not needed. strndup(x, strlen(x)) == strdup(x)
+
+- Better handling and reporting of memory allocation errors. exit(1) is not a
+  sensible policy for a library.
+
+- Namespace the library inside sastrawi_* and SASTRAWI_*
+
+- Allow the library user to get and set a void* cookie in the struct using
+  functions. This can be used for context e.g. by the dictionary callback
+  or the custom malloc / free.
+
+- No more library-specific dictionary, library user must specify dictionary
+  callback. This will allow using other sources e.g. SQL tables. If possible
+  have it take (const char *s, int len) so can check the middle of a string
+  if it is root word or not without allocing new memory
+
+- Need a special build of the library for testability. A lot of functions
+  should really be static, but cannot be static for them to be tested. Consider
+  adding an internal macro SASTRAWI_TESTABLE that is defined to be "static" or
+  nothing.
+
+- Consider allowing library user to supply own malloc / free function (?).
+  This would make it easier to simulate out-of-memory conditions in tests.
+  PCRE2 also supports custom malloc: see pcre2_general_context_create.
