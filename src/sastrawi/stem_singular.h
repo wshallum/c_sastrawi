@@ -1,6 +1,2 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-
-int stem_singular_word(char *word, char **stemmed_word);
-typedef int (*AFFIX_REMOVER)(char *word, char **stemmed_word);
+int stem_singular_word(sastrawi_stemmer *stemmer, char *word, char **stemmed_word);
+typedef int (*AFFIX_REMOVER)(sastrawi_stemmer *stemmer, char *word, char **stemmed_word);

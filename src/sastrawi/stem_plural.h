@@ -1,11 +1,13 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+#ifndef SASTRAWI_STEM_PLURAL_H_INCLUDED
+#define SASTRAWI_STEM_PLURAL_H_INCLUDED
+
+#include "sastrawi_internal.h"
 
 //Sastrawi\Stemmer::isPlural
-int is_plural(char *word);
+int is_plural(sastrawi_stemmer *stemmer, char *word);
 
-int plural_parts(char *word, char **parts[]);
+int plural_parts(sastrawi_stemmer *stemmer, char *word, char **parts[]);
 
 //Sastrawi\Stemmer::stemPluralWord
-int stem_plural_word(char *word, char **stemmed_word);
+int stem_plural_word(sastrawi_stemmer *stemmer, char *word, char **stemmed_word);
+#endif
