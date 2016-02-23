@@ -77,11 +77,12 @@ int stem_plural_word(sastrawi_stemmer *stemmer, char *word, char **stemmed_word)
   char **word_parts = NULL;
   char *root_word0 = NULL;
   char *root_word1 = NULL;
+  int stemmed;
 
   int rc = plural_parts(stemmer, word, &word_parts);
 
-  stem_singular_word(stemmer, word_parts[0], &root_word0);
-  stem_singular_word(stemmer, word_parts[1], &root_word1);
+  stem_singular_word(stemmer, word_parts[0], &root_word0, &stemmed);
+  stem_singular_word(stemmer, word_parts[1], &root_word1, &stemmed);
 
 
   debug("word parts %s => %s, %s => %s", word_parts[0], root_word0, word_parts[1], root_word1);

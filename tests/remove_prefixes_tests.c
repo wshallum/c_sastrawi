@@ -16,8 +16,11 @@ char *test_remove_complex_prefix(char *stemable_word, char *expected_stemmed_wor
 {  
   char *stemmed_word = NULL;
   char *removed_part = NULL;
+  int rc;
 
-  int rc = fn(stemmer, stemable_word, &stemmed_word, &removed_part);
+  sastrawi_err err = fn(stemmer, stemable_word, &stemmed_word, &removed_part, &rc);
+  debug("err: %d", err);
+  mu_assert(err == SASTRAWI_E_OK, "failed while asserting ok");
   debug("word: %s, expected_response_code: %d, actual_response_code: %d, expected stemmed word: %s, actual stemmed word: %s, expected removed part: %s, actual removed part: %s", stemable_word, expected_response_code, rc, expected_stemmed_word, stemmed_word, expected_removed_part, removed_part);
   mu_assert(rc == expected_response_code, "failed while asserting expected_response_code");
   mu_assert(strcmp(expected_stemmed_word, stemmed_word) == 0, "failed while asserting stemmed word");
@@ -358,8 +361,10 @@ char *test_remove_complex_prefix_rule20_2()
 char *test_remove_prefixes_when_partially_stemmed()
 {
   char *stemmed_word;
+  int rc;
 
-  int rc = remove_prefixes(stemmer, "mewarnai", &stemmed_word);
+  sastrawi_err err = remove_prefixes(stemmer, "mewarnai", &stemmed_word, &rc);
+  mu_assert(err == SASTRAWI_E_OK, "failed while asserting ok");
   debug("word: mewarnai, expected stemmed word: warnai, actual stemmed word: %s", stemmed_word);
   mu_assert(rc == 0, "it changes the word, but its not done");
   mu_assert(strcmp("warnai", stemmed_word) == 0, "failed while asserting stemmed word");
@@ -370,9 +375,11 @@ char *test_remove_prefixes_when_partially_stemmed()
 char *test_remove_prefixes_runs_3_times() 
 {
   char *stemmed_word;
+  int rc;
 
   // diberberlari is a fake work, but we need it as a test, can't think of a valid word
-  int rc = remove_prefixes(stemmer, "diberberlari", &stemmed_word);
+  sastrawi_err err = remove_prefixes(stemmer, "diberberlari", &stemmed_word, &rc);
+  mu_assert(err == SASTRAWI_E_OK, "failed while asserting ok");
   debug("word: diberberlari, expected stemmed word: lari, actual stemmed word: %s", stemmed_word);
   mu_assert(rc == 1, "it is fully stemmed");
   mu_assert(strcmp("lari", stemmed_word) == 0, "failed while asserting stemmed word");

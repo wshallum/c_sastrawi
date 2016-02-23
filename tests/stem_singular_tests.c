@@ -15,7 +15,9 @@ sastrawi_stemmer *stemmer;
 char *test_stem_singular_word_for(char *word, char *expected_stem_word) 
 {
   char *stemmed_word = NULL;
-  int rc = stem_singular_word(stemmer, word, &stemmed_word);
+  int rc;
+  sastrawi_err err = stem_singular_word(stemmer, word, &stemmed_word, &rc);
+  mu_assert(err == SASTRAWI_E_OK, "ok");
   debug("stem word: %s, expected: %s, actual: %s", word, expected_stem_word, stemmed_word);
   mu_assert(rc == 1, "failed to stem");
   mu_assert(strcmp(expected_stem_word, stemmed_word) == 0, "failed to stem correctly");
@@ -35,7 +37,9 @@ char *test_stem_singular_word_returns_original_word_when_cannot_stem()
   char *stemmed_word;
   char *word = "beblahblahan";
   char *expected_stem_word = "beblahblahan";
-  int rc = stem_singular_word(stemmer, word, &stemmed_word);
+  int rc;
+  sastrawi_err err = stem_singular_word(stemmer, word, &stemmed_word, &rc);
+  mu_assert(err == SASTRAWI_E_OK, "ok");
   debug("stem word: %s, expected: %s, actual: %s", word, expected_stem_word, stemmed_word);
   mu_assert(rc == 0, "did not fail to stem");
   mu_assert(strcmp(expected_stem_word, stemmed_word) == 0, "should not change the word");

@@ -16,8 +16,10 @@ char *test_remove_inflectional_particle_with_dash()
 {
   char *stemmed_word = NULL; 
   char *removed_part = NULL;
+  int rc;
 
-  int rc = remove_inflectional_particle(stemmer, "penting-kah", &stemmed_word, &removed_part);
+  sastrawi_err err = remove_inflectional_particle(stemmer, "penting-kah", &stemmed_word, &removed_part, &rc);
+  mu_assert(err == SASTRAWI_E_OK, "ok");
   mu_assert(rc, "successfully stems");
   mu_assert(strcmp("penting", stemmed_word) == 0, "we expect 'penting' as the stemmed word");
   mu_assert(strcmp("kah", removed_part) == 0, "we expect 'kah' as the removed part");
@@ -31,8 +33,10 @@ char *test_remove_inflectional_particle_without_dash()
 {
   char *stemmed_word = NULL; 
   char *removed_part = NULL;
+  int rc;
 
-  int rc = remove_inflectional_particle(stemmer, "pentingkah", &stemmed_word, &removed_part);
+  sastrawi_err err = remove_inflectional_particle(stemmer, "pentingkah", &stemmed_word, &removed_part, &rc);
+  mu_assert(err == SASTRAWI_E_OK, "ok");
   mu_assert(rc, "successfully stems");
   mu_assert(strcmp("penting", stemmed_word) == 0, "we expect 'penting' as the stemmed word");
   mu_assert(strcmp("kah", removed_part) == 0, "we expect 'kah' as the removed part");
@@ -44,8 +48,10 @@ char *test_remove_inflectional_particle_no_match()
 {
   char *stemmed_word = NULL; 
   char *removed_part = NULL;
+  int rc;
 
-  int rc = remove_inflectional_particle(stemmer, "penting", &stemmed_word, &removed_part);
+  sastrawi_err err = remove_inflectional_particle(stemmer, "penting", &stemmed_word, &removed_part, &rc);
+  mu_assert(err == SASTRAWI_E_OK, "ok");
   mu_assert(!rc, "fails stem");
   mu_assert(strcmp("penting", stemmed_word) == 0, "we expect no change in the word passed in");
   mu_assert(strcmp("", removed_part) == 0, "we expect empty string in the removed_part");
@@ -57,9 +63,11 @@ char *test_remove_possessive_pronoun_with_dash()
 {
   char *stemmed_word = NULL; 
   char *removed_part = NULL;
+  int rc;
 
-  int rc = remove_possessive_pronoun(stemmer, "cinta-ku", &stemmed_word, &removed_part);
+  sastrawi_err err = remove_possessive_pronoun(stemmer, "cinta-ku", &stemmed_word, &removed_part, &rc);
 
+  mu_assert(err == SASTRAWI_E_OK, "ok");
   mu_assert(rc, "successfully stems");
   mu_assert(strcmp("cinta", stemmed_word) == 0, "we expect 'cinta' as the stemmed word");
   mu_assert(strcmp("ku", removed_part) == 0, "we expect 'ku' as the removed part");
@@ -71,8 +79,10 @@ char *test_remove_possessive_pronoun_without_dash()
 {
   char *stemmed_word = NULL; 
   char *removed_part = NULL;
+  int rc;
 
-  int rc = remove_possessive_pronoun(stemmer, "cintaku", &stemmed_word, &removed_part);
+  sastrawi_err err = remove_possessive_pronoun(stemmer, "cintaku", &stemmed_word, &removed_part, &rc);
+  mu_assert(err == SASTRAWI_E_OK, "ok");
   mu_assert(rc, "successfully stems");
   mu_assert(strcmp("cinta", stemmed_word) == 0, "we expect 'cinta' as the stemmed word");
   mu_assert(strcmp("ku", removed_part) == 0, "we expect 'ku' as the removed part");
@@ -84,9 +94,11 @@ char *test_remove_derivational_suffix_with_dash()
 {
   char *stemmed_word = NULL; 
   char *removed_part = NULL;
+  int rc;
 
-  int rc = remove_derivational_suffix(stemmer, "cinta-kan", &stemmed_word, &removed_part);
+  sastrawi_err err = remove_derivational_suffix(stemmer, "cinta-kan", &stemmed_word, &removed_part, &rc);
 
+  mu_assert(err == SASTRAWI_E_OK, "ok");
   mu_assert(rc, "successfully stems");
   mu_assert(strcmp("cinta", stemmed_word) == 0, "we expect 'cinta' as the stemmed word");
   mu_assert(strcmp("kan", removed_part) == 0, "we expect 'kan' as the removed part");
@@ -98,8 +110,10 @@ char *test_remove_derivational_suffix_without_dash()
 {
   char *stemmed_word = NULL; 
   char *removed_part = NULL;
+  int rc;
 
-  int rc = remove_derivational_suffix(stemmer, "cintakan", &stemmed_word, &removed_part);
+  sastrawi_err err = remove_derivational_suffix(stemmer, "cintakan", &stemmed_word, &removed_part, &rc);
+  mu_assert(err == SASTRAWI_E_OK, "ok");
   mu_assert(rc, "successfully stems");
   mu_assert(strcmp("cinta", stemmed_word) == 0, "we expect 'cinta' as the stemmed word");
   mu_assert(strcmp("kan", removed_part) == 0, "we expect 'kan' as the removed part");
@@ -113,7 +127,9 @@ char *test_remove_suffixes()
 {
   char *word = "bajumukah";
   char *stemmed_word = NULL;
-  remove_suffixes(stemmer, word, &stemmed_word);
+  int stemmed;
+  sastrawi_err err = remove_suffixes(stemmer, word, &stemmed_word, &stemmed);
+  mu_assert(err == SASTRAWI_E_OK, "ok");
   debug("stem word: %s, expected: baju, actual: %s", word, stemmed_word);
   mu_assert(strcmp("baju", stemmed_word) == 0, "it stems to baju");
   free(stemmed_word);

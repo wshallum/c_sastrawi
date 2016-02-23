@@ -36,12 +36,13 @@ const PREFIX_REMOVER prefix_removers[prefix_remover_count] = {
   remove_complex_prefix_rule20
 };
 
-int assign_if_root_word(char **, char *, char **, char *);
+int assign_if_root_word(char **, char *, char **, char *, int *);
 
-int remove_prefixes(sastrawi_stemmer *stemmer, char *original_word, char **stemmed_word)
+sastrawi_err remove_prefixes(sastrawi_stemmer *stemmer, char *original_word, char **stemmed_word, int *stemmed)
 {
-  int rc = NOT_STEMMED;
+  sastrawi_err err = SASTRAWI_E_OK;
   char *removed_part = NULL;
+  *stemmed = NOT_STEMMED;
 
   char *word = strndup(original_word, strlen(original_word));
   char *post_remove = NULL;
@@ -51,9 +52,16 @@ int remove_prefixes(sastrawi_stemmer *stemmer, char *original_word, char **stemm
 
       free(post_remove);
       free(removed_part);
-      rc = (*prefix_removers[i])(stemmer, word, &post_remove, &removed_part);
+      err = (*prefix_removers[i])(stemmer, word, &post_remove, &removed_part, stemmed);
 
-      if(rc == FULLY_STEMMED) {
+      if(SASTRAWI_FAILED(err)) {
+        free(post_remove);
+        free(removed_part);
+        free(word);
+        return err;
+      }
+
+      if(*stemmed == FULLY_STEMMED) {
         break;
       } else {
         free(word);
@@ -61,7 +69,7 @@ int remove_prefixes(sastrawi_stemmer *stemmer, char *original_word, char **stemm
       }
     }
 
-    if(rc == FULLY_STEMMED) {
+    if(*stemmed == FULLY_STEMMED) {
       break;
     }
   }
@@ -73,372 +81,421 @@ int remove_prefixes(sastrawi_stemmer *stemmer, char *original_word, char **stemm
   free(removed_part);
   free(word);
 
-  return rc;
+  return err;
 }
 
-int remove_plain_prefix(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part)
+sastrawi_err remove_plain_prefix(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part, int *stemmed)
 {
-  int rc = NOT_STEMMED;
+  *stemmed = NOT_STEMMED;
 
   int split_rc =  prefix_split_word(stemmer, "^(di|ke|se)(\\w+)$", word, removed_part, stemmed_word);
 
   if(split_rc == 1) {
-      rc = PARTIALLY_STEMMED;
+      *stemmed = PARTIALLY_STEMMED;
 
       if(dictionary_contains(*stemmed_word)) {
-        rc = FULLY_STEMMED;
+        *stemmed = FULLY_STEMMED;
       }
   }
 
-  return rc;
+  return SASTRAWI_E_OK;
 }
 
-int remove_complex_prefix_rule1(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part)
+sastrawi_err remove_complex_prefix_rule1(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part, int *stemmed)
 {
-  int rc = NOT_STEMMED;
+  *stemmed = NOT_STEMMED;
 
   int split_rc = prefix_split_word(stemmer, "(^ber)([aiueo].*)$", word, removed_part, stemmed_word);
 
   //1a
   if(split_rc == 1) {
-    rc = PARTIALLY_STEMMED;
+    *stemmed = PARTIALLY_STEMMED;
     if(dictionary_contains(*stemmed_word)) {
-      rc = FULLY_STEMMED;
+      *stemmed = FULLY_STEMMED;
     } else {
       //1b
       char *alternative_stemmed_word;
-      asprintf(&alternative_stemmed_word, "r%s", *stemmed_word);
-      int alt_rc = assign_if_root_word(stemmed_word, alternative_stemmed_word, removed_part, "be");
-      if(alt_rc == FULLY_STEMMED) {
-        rc = FULLY_STEMMED;
+      if (asprintf(&alternative_stemmed_word, "r%s", *stemmed_word) < 0) {
+        return SASTRAWI_E_MEMORY;
+      }
+      int alt_stemmed;
+      sastrawi_err alt_err = assign_if_root_word(stemmed_word, alternative_stemmed_word, removed_part, "be", &alt_stemmed);
+      if (SASTRAWI_FAILED(alt_err)) {
+        return alt_err;
+      }
+      if(alt_stemmed == FULLY_STEMMED) {
+        *stemmed = FULLY_STEMMED;
       }
       free(alternative_stemmed_word);
     }
   }
-  return rc;
+  return SASTRAWI_E_OK;
 }
 
-int remove_complex_prefix_rule2(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part)
+sastrawi_err remove_complex_prefix_rule2(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part, int *stemmed)
 {
-  int rc = NOT_STEMMED;
+  *stemmed = NOT_STEMMED;
 
   int split_rc = split_word3(stemmer, "(^ber)([^aeiou][a-z](\\w*))", word, removed_part, stemmed_word, "er");
 
   if(split_rc == 1) {
-      rc = PARTIALLY_STEMMED;
+      *stemmed = PARTIALLY_STEMMED;
 
       if(dictionary_contains(*stemmed_word)) {
-        rc = FULLY_STEMMED;
+        *stemmed = FULLY_STEMMED;
       }
   }
 
-  return rc;
+  return SASTRAWI_E_OK;
 }
 
-int remove_complex_prefix_rule3(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part)
+sastrawi_err remove_complex_prefix_rule3(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part, int *stemmed)
 {
-  int rc = NOT_STEMMED;
+  *stemmed = NOT_STEMMED;
 
   int split_rc = prefix_split_word(stemmer, "(^ber)([^aeiou][a-z]er\\w*)", word, removed_part, stemmed_word);
 
 
   if(split_rc == 1) {
-      rc = PARTIALLY_STEMMED;
+      *stemmed = PARTIALLY_STEMMED;
 
       if(dictionary_contains(*stemmed_word)) {
-        rc = FULLY_STEMMED;
+        *stemmed = FULLY_STEMMED;
       }
   }
 
-  return rc;
+  return SASTRAWI_E_OK;
 }
 
-int remove_complex_prefix_rule4(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part)
+sastrawi_err remove_complex_prefix_rule4(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part, int *stemmed)
 {
-  int rc = NOT_STEMMED;
+  *stemmed = NOT_STEMMED;
 
   int split_rc = prefix_split_word(stemmer, "(^bel)(ajar\\w*)", word, removed_part, stemmed_word);
 
   if(split_rc == 1) {
-      rc = PARTIALLY_STEMMED;
+      *stemmed = PARTIALLY_STEMMED;
 
       if(dictionary_contains(*stemmed_word)) {
-        rc = FULLY_STEMMED;
+        *stemmed = FULLY_STEMMED;
       }
   }
 
-  return rc;
+  return SASTRAWI_E_OK;
 }
 
-int remove_complex_prefix_rule5(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part)
+sastrawi_err remove_complex_prefix_rule5(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part, int *stemmed)
 {
-  int rc = NOT_STEMMED;
+  *stemmed = NOT_STEMMED;
 
   int split_rc = prefix_split_word(stemmer, "(^be)([^aeiour]er[^aeiou]\\w*)", word, removed_part, stemmed_word);
 
   if(split_rc == 1) {
-      rc = PARTIALLY_STEMMED;
+      *stemmed = PARTIALLY_STEMMED;
 
       if(dictionary_contains(*stemmed_word)) {
-        rc = FULLY_STEMMED;
+        *stemmed = FULLY_STEMMED;
       }
   }
-  return rc;
+  return SASTRAWI_E_OK;
 }
 
-int remove_complex_prefix_rule6(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part)
+sastrawi_err remove_complex_prefix_rule6(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part, int *stemmed)
 {
-  int rc = NOT_STEMMED;
+  *stemmed = NOT_STEMMED;
 
   int split_rc = prefix_split_word(stemmer, "(^ter)([aiueo].*)$", word, removed_part, stemmed_word);
 
   //6a
   if(split_rc == 1) {
-    rc = PARTIALLY_STEMMED;
+    *stemmed = PARTIALLY_STEMMED;
     if(dictionary_contains(*stemmed_word)) {
-      rc = FULLY_STEMMED;
+      *stemmed = FULLY_STEMMED;
     } else {
   //6b
       char *alternative_stemmed_word;
-      asprintf(&alternative_stemmed_word, "r%s", *stemmed_word);
-      int alt_rc = assign_if_root_word(stemmed_word, alternative_stemmed_word, removed_part, "te");
-      if(alt_rc == FULLY_STEMMED) {
-        rc = alt_rc;
+      if (asprintf(&alternative_stemmed_word, "r%s", *stemmed_word) == -1) {
+        return SASTRAWI_E_MEMORY;
+      }
+      int alt_stemmed;
+      sastrawi_err alt_err = assign_if_root_word(stemmed_word, alternative_stemmed_word, removed_part, "te", &alt_stemmed);
+      if (SASTRAWI_FAILED(alt_err)) {
+        free(alternative_stemmed_word);
+        return alt_err;
+      }
+      if(alt_stemmed == FULLY_STEMMED) {
+        *stemmed = alt_stemmed;
       }
       free(alternative_stemmed_word);
     }
 
   }
-  return rc;
+  return SASTRAWI_E_OK;
 }
 
-int remove_complex_prefix_rule7(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part)
+sastrawi_err remove_complex_prefix_rule7(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part, int *stemmed)
 {
-  int rc = NOT_STEMMED;
+  *stemmed = NOT_STEMMED;
 
   int split_rc = prefix_split_word(stemmer, "(^ter)([^aeiour]er[aeiou]\\w*)", word, removed_part, stemmed_word);
 
   if(split_rc == 1) {
-    rc = PARTIALLY_STEMMED;
+    *stemmed = PARTIALLY_STEMMED;
       if(dictionary_contains(*stemmed_word)) {
-        rc = FULLY_STEMMED;
+        *stemmed = FULLY_STEMMED;
       }
   }
 
-  return rc;
+  return SASTRAWI_E_OK;
 }
 
-int remove_complex_prefix_rule8(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part)
+sastrawi_err remove_complex_prefix_rule8(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part, int *stemmed)
 {
-  int rc = NOT_STEMMED;
+  *stemmed = NOT_STEMMED;
 
   int split_rc = split_word3(stemmer, "(^ter)([^aeiour](\\w*))", word, removed_part, stemmed_word, "er");
 
   if(split_rc == 1) {
-      rc = PARTIALLY_STEMMED;
+      *stemmed = PARTIALLY_STEMMED;
 
       if(dictionary_contains(*stemmed_word)) {
-        rc = FULLY_STEMMED;
+        *stemmed = FULLY_STEMMED;
       }
   }
 
 
-  return rc;
+  return SASTRAWI_E_OK;
 }
 
-int remove_complex_prefix_rule9(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part)
+sastrawi_err remove_complex_prefix_rule9(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part, int *stemmed)
 {
-  int rc = NOT_STEMMED;
+  *stemmed = NOT_STEMMED;
 
   int split_rc = prefix_split_word(stemmer, "(^te)([^aeiour]er[^aeiou]\\w*)", word, removed_part, stemmed_word);
 
   if(split_rc == 1) {
-    rc = PARTIALLY_STEMMED;
+    *stemmed = PARTIALLY_STEMMED;
     if(dictionary_contains(*stemmed_word)) {
-      rc = FULLY_STEMMED;
+      *stemmed = FULLY_STEMMED;
     }
   }
-  return rc;
+  return SASTRAWI_E_OK;
 }
 
-int remove_complex_prefix_rule10(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part)
+sastrawi_err remove_complex_prefix_rule10(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part, int *stemmed)
 {
-  int rc = NOT_STEMMED;
+  *stemmed = NOT_STEMMED;
 
   int split_rc = prefix_split_word(stemmer, "(^me)([lrwy][aeiou]\\w*)", word, removed_part, stemmed_word);
 
   if(split_rc == 1 && dictionary_contains(*stemmed_word)) {
-      rc = FULLY_STEMMED;
+      *stemmed = FULLY_STEMMED;
   }
-  return rc;
+  return SASTRAWI_E_OK;
 }
 
-int remove_complex_prefix_rule11(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part)
+sastrawi_err remove_complex_prefix_rule11(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part, int *stemmed)
 {
-  int rc = NOT_STEMMED;
+  *stemmed = NOT_STEMMED;
 
   int split_rc = prefix_split_word(stemmer, "(^mem)([fbv]\\w*)", word, removed_part, stemmed_word);
 
   if(split_rc == 1 && dictionary_contains(*stemmed_word)) {
-      rc = FULLY_STEMMED;
+      *stemmed = FULLY_STEMMED;
   }
 
-  return rc;
+  return SASTRAWI_E_OK;
 }
 
-int remove_complex_prefix_rule12(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part)
+sastrawi_err remove_complex_prefix_rule12(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part, int *stemmed)
 {
-  int rc = NOT_STEMMED;
+  *stemmed = NOT_STEMMED;
 
   int split_rc = prefix_split_word(stemmer, "(^mem)(pe\\w*)", word, removed_part, stemmed_word);
 
   if(split_rc == 1 && dictionary_contains(*stemmed_word)) {
-      rc = FULLY_STEMMED;
+      *stemmed = FULLY_STEMMED;
   }
 
-  return rc;
+  return SASTRAWI_E_OK;
 }
 
-int remove_complex_prefix_rule13(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part)
+sastrawi_err remove_complex_prefix_rule13(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part, int *stemmed)
 {
-  int rc = NOT_STEMMED;
+  *stemmed = NOT_STEMMED;
 
   int split_rc = prefix_split_word(stemmer, "(^me)(m[aeiou]\\w*)", word, removed_part, stemmed_word);
 
   if(split_rc == 1 ) {
     if(dictionary_contains(*stemmed_word)) {
-      rc = FULLY_STEMMED;
+      *stemmed = FULLY_STEMMED;
     } else {
       char *alternative_stemmed_word;
-      asprintf(&alternative_stemmed_word, "p%s", *stemmed_word+1);
-      rc = assign_if_root_word(stemmed_word, alternative_stemmed_word, removed_part, "me");
+      if (asprintf(&alternative_stemmed_word, "p%s", *stemmed_word+1) == -1) {
+        return SASTRAWI_E_MEMORY;
+      }
+      sastrawi_err alt_err = assign_if_root_word(stemmed_word, alternative_stemmed_word, removed_part, "me", stemmed);
+      if (SASTRAWI_FAILED(alt_err)) {
+        free(alternative_stemmed_word);
+        return alt_err;
+      }
       free(alternative_stemmed_word);
     }
   }
-  return rc;
+  return SASTRAWI_E_OK;
 }
 
-int remove_complex_prefix_rule14(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part)
+sastrawi_err remove_complex_prefix_rule14(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part, int *stemmed)
 {
-  int rc = NOT_STEMMED;
+  *stemmed = NOT_STEMMED;
 
   int split_rc = prefix_split_word(stemmer, "(^men)([cdjstz]\\w*)", word, removed_part, stemmed_word);
 
   if(split_rc == 1 && dictionary_contains(*stemmed_word)) {
-      rc = FULLY_STEMMED;
+      *stemmed = FULLY_STEMMED;
   }
-  return rc;
+  return SASTRAWI_E_OK;
 }
 
-int remove_complex_prefix_rule15(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part)
+sastrawi_err remove_complex_prefix_rule15(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part, int *stemmed)
 {
-  int rc = NOT_STEMMED;
+  *stemmed = NOT_STEMMED;
 
   int split_rc = prefix_split_word(stemmer, "(^me)(n[aeiou]\\w*)", word, removed_part, stemmed_word);
 
   if(split_rc == 1 ) {
     if(dictionary_contains(*stemmed_word)) {
-      rc = FULLY_STEMMED;
+      *stemmed = FULLY_STEMMED;
     } else {
       char *alternative_stemmed_word;
-      asprintf(&alternative_stemmed_word, "t%s", *stemmed_word+1);
-      rc = assign_if_root_word(stemmed_word, alternative_stemmed_word, removed_part, "me");
+      if (asprintf(&alternative_stemmed_word, "t%s", *stemmed_word+1) == -1) {
+        return SASTRAWI_E_MEMORY;
+      }
+      sastrawi_err alt_err = assign_if_root_word(stemmed_word, alternative_stemmed_word, removed_part, "me", stemmed);
+      if (SASTRAWI_FAILED(alt_err)) {
+        free(alternative_stemmed_word);
+        return alt_err;
+      }
       free(alternative_stemmed_word);
     }
   }
-  return rc;
+  return SASTRAWI_E_OK;
 }
 
-int remove_complex_prefix_rule16(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part)
+sastrawi_err remove_complex_prefix_rule16(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part, int *stemmed)
 {
-  int rc = NOT_STEMMED;
+  *stemmed = NOT_STEMMED;
 
   int split_rc = prefix_split_word(stemmer, "(^meng)([ghqk]\\w*)", word, removed_part, stemmed_word);
 
   if(split_rc == 1 && dictionary_contains(*stemmed_word)) {
-      rc = FULLY_STEMMED;
+      *stemmed = FULLY_STEMMED;
   }
-  return rc;
+  return SASTRAWI_E_OK;
 }
 
-int remove_complex_prefix_rule17(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part)
+sastrawi_err remove_complex_prefix_rule17(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part, int *stemmed)
 {
-  int rc = NOT_STEMMED;
+  *stemmed = NOT_STEMMED;
   char *alternative_stemmed_word;
 
   int split_rc = prefix_split_word(stemmer, "(^meng)([aeiou]\\w*)", word, removed_part, stemmed_word);
 
   if(split_rc == 1) {
     if(dictionary_contains(*stemmed_word)) {
-      rc = FULLY_STEMMED;
+      *stemmed = FULLY_STEMMED;
     }
 
-    if(rc == 0) {
-      asprintf(&alternative_stemmed_word, "k%s", *stemmed_word);
-      rc = assign_if_root_word(stemmed_word, alternative_stemmed_word, removed_part, "meng");
+    if(*stemmed == NOT_STEMMED) {
+      if (asprintf(&alternative_stemmed_word, "k%s", *stemmed_word) == -1) {
+        return SASTRAWI_E_MEMORY;
+      }
+      sastrawi_err alt_err = assign_if_root_word(stemmed_word, alternative_stemmed_word, removed_part, "meng", stemmed);
+      if (SASTRAWI_FAILED(alt_err)) {
+        free(alternative_stemmed_word);
+        return alt_err;
+      }
       free(alternative_stemmed_word);
     }
 
-    if(rc == 0) {
-      asprintf(&alternative_stemmed_word, "%s", *stemmed_word+1);
-      rc = assign_if_root_word(stemmed_word, alternative_stemmed_word, removed_part, "menge");
+    if(*stemmed == NOT_STEMMED) {
+      if (asprintf(&alternative_stemmed_word, "%s", *stemmed_word+1) == -1) {
+        return SASTRAWI_E_MEMORY;
+      }
+      sastrawi_err alt_err = assign_if_root_word(stemmed_word, alternative_stemmed_word, removed_part, "menge", stemmed);
+      if (SASTRAWI_FAILED(alt_err)) {
+        free(alternative_stemmed_word);
+        return alt_err;
+      }
       free(alternative_stemmed_word);
     }
 
-    if(rc == 0) {
-      asprintf(&alternative_stemmed_word, "ng%s", *stemmed_word);
-      rc = assign_if_root_word(stemmed_word, alternative_stemmed_word, removed_part, "me");
+    if(*stemmed == NOT_STEMMED) {
+      if (asprintf(&alternative_stemmed_word, "ng%s", *stemmed_word) == -1) {
+        return SASTRAWI_E_MEMORY;
+      }
+      sastrawi_err alt_err = assign_if_root_word(stemmed_word, alternative_stemmed_word, removed_part, "me", stemmed);
+      if (SASTRAWI_FAILED(alt_err)) {
+        free(alternative_stemmed_word);
+        return alt_err;
+      }
       free(alternative_stemmed_word);
     }
   }
-  return rc;
+  return SASTRAWI_E_OK;
 }
 
-int remove_complex_prefix_rule18(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part)
+sastrawi_err remove_complex_prefix_rule18(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part, int *stemmed)
 {
-  int rc = NOT_STEMMED;
+  *stemmed = NOT_STEMMED;
 
   int split_rc = prefix_split_word(stemmer, "(^me)(ny\\w*)", word, removed_part, stemmed_word);
 
   if(split_rc == 1 ) {
     if(dictionary_contains(*stemmed_word)) {
-      rc = FULLY_STEMMED;
+      *stemmed = FULLY_STEMMED;
     } else {
       char *alternative_stemmed_word;
-      asprintf(&alternative_stemmed_word, "s%s", *stemmed_word+2);
-      rc = assign_if_root_word(stemmed_word, alternative_stemmed_word, removed_part, "meny");
+      if (asprintf(&alternative_stemmed_word, "s%s", *stemmed_word+2) == -1) {
+        return SASTRAWI_E_MEMORY;
+      }
+      sastrawi_err alt_err = assign_if_root_word(stemmed_word, alternative_stemmed_word, removed_part, "meny", stemmed);
+      if (SASTRAWI_FAILED(alt_err)) {
+        free(alternative_stemmed_word);
+        return alt_err;
+      }
       free(alternative_stemmed_word);
     }
   }
-  return rc;
+  return SASTRAWI_E_OK;
 }
 
-int remove_complex_prefix_rule19(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part)
+sastrawi_err remove_complex_prefix_rule19(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part, int *stemmed)
 {
-  int rc = NOT_STEMMED;
+  *stemmed = NOT_STEMMED;
 
   int split_rc = prefix_split_word(stemmer, "(^mem)(p[^e]\\w*)", word, removed_part, stemmed_word);
 
   if(split_rc == 1 && dictionary_contains(*stemmed_word)) {
-      rc = FULLY_STEMMED;
+      *stemmed = FULLY_STEMMED;
   }
-  return rc;
+  return SASTRAWI_E_OK;
 }
 
-int remove_complex_prefix_rule20(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part)
+sastrawi_err remove_complex_prefix_rule20(sastrawi_stemmer *stemmer, char *word, char **stemmed_word, char **removed_part, int *stemmed)
 {
-  int rc = NOT_STEMMED;
+  *stemmed = NOT_STEMMED;
 
   int split_rc = prefix_split_word(stemmer, "(^pe)([wy][aeiou]\\w*)", word, removed_part, stemmed_word);
 
   if(split_rc == 1 && dictionary_contains(*stemmed_word)) {
-      rc = FULLY_STEMMED;
+      *stemmed = FULLY_STEMMED;
   }
-  return rc;
+  return SASTRAWI_E_OK;
 }
 
-int assign_if_root_word(char **stemmed_word, char *alternative_stemmed_word, char **removed_part, char *alternative_removed_part) {
-  int rc = NOT_STEMMED;
+sastrawi_err assign_if_root_word(char **stemmed_word, char *alternative_stemmed_word, char **removed_part, char *alternative_removed_part, int *stemmed) {
+  *stemmed = NOT_STEMMED;
 
   if(dictionary_contains(alternative_stemmed_word)) {
     free(*removed_part);
@@ -446,8 +503,8 @@ int assign_if_root_word(char **stemmed_word, char *alternative_stemmed_word, cha
 
     free(*stemmed_word);
     *stemmed_word = strndup(alternative_stemmed_word, strlen(alternative_stemmed_word));
-    rc = FULLY_STEMMED;
+    *stemmed = FULLY_STEMMED;
   }
 
-  return rc;
+  return SASTRAWI_E_OK;
 }
